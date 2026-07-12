@@ -23,6 +23,7 @@ dependencies {
     testImplementation 'org.flywaydb:flyway-mysql:10.22.0'
     testImplementation 'com.mysql:mysql-connector-j:9.1.0'
     testImplementation 'io.qameta.allure:allure-cucumber7-jvm:2.29.0'
+    testImplementation 'io.qameta.allure:allure-junit5:2.29.0'
     testImplementation 'org.slf4j:slf4j-simple:2.0.16'
 }
 
@@ -33,3 +34,9 @@ test {
 }
 
 allure { version = '2.29.0' }
+
+tasks.register('reporting', Test) {
+    useJUnitPlatform()
+    include '**/ReportingConfigurationTest.class'
+    systemProperty 'allure.results.directory', layout.buildDirectory.dir('allure-results').get().asFile
+}

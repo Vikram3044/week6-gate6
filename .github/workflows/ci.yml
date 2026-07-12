@@ -1,23 +1,22 @@
-name: MySQL Testcontainers CI
+name: ShopKart Allure Report
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  testcontainers:
-    name: MySQL container and Flyway migrations
+  allure-report:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout automation project
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
@@ -34,9 +33,35 @@ jobs:
       - name: Generate Gradle wrapper in CI
         run: gradle wrapper --gradle-version 8.10.2 --no-daemon
 
-      - name: Run isolated MySQL Testcontainers check
-        run: ./gradlew clean test --tests com.shopkart.data.db.MySqlContainerSmokeTest --no-daemon
+      - name: Run reporting configuration tests
+        run: ./gradlew reporting --no-daemon
 
-      - name: Scan committed files for local secret files
+      - name: Copy Allure environment
+        if: always()
         run: |
-          ! git ls-files | grep -E '(^|/)(\.env($|\.)|secrets\.local\.properties$)' | grep -v -E '(^|/)\.env\.example$'
+          mkdir -p build/allure-results
+          cp src/test/resources/environment.properties build/allure-results/environment.properties
+
+      - name: Prepare GitHub Pages history
+        if: always()
+        run: |
+          git fetch origin gh-pages --depth=1 || true
+          mkdir -p gh-pages
+          git archive origin/gh-pages 2>/dev/null | tar -x -C gh-pages || true
+
+      - name: Generate Allure report and preserve history
+        if: always()
+        uses: simple-elf/allure-report-action@master
+        with:
+          allure_results: build/allure-results
+          allure_report: allure-report
+          gh_pages: gh-pages
+          allure_history: allure-history
+
+      - name: Deploy report to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history

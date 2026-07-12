@@ -25,6 +25,6 @@ The resolver supports both `SHOPKART_ALICE_PW` and the app's `SHOPKART_ALICE_PAS
 
 ## GitHub Actions CI
 
-The workflow in `.github/workflows/ci.yml` runs only `MySqlContainerSmokeTest`: it starts MySQL through Testcontainers, applies the committed Flyway migrations, and verifies the public product seed. It does not start the ShopKart application, use a GitHub Actions MySQL service, require secrets, or deploy a report.
+The workflow in `.github/workflows/ci.yml` runs only `ReportingConfigurationTest`, verifies Allure category configuration, and publishes the resulting Allure history to the `gh-pages` branch. It does not start the ShopKart application, a MySQL service, or Testcontainers, and does not require secrets.
 
-Run the complete API/UI suite locally against a running ShopKart application with `gradle test`.
+Run the complete API/UI suite locally against a running ShopKart application with `gradle test`. The Testcontainers smoke test is also retained for local/container-enabled environments.
