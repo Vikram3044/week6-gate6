@@ -22,3 +22,17 @@ gradle test
 ```
 
 The resolver supports both `SHOPKART_ALICE_PW` and the app's `SHOPKART_ALICE_PASSWORD` naming; neither is logged or attached to Allure.
+
+## GitHub Actions CI
+
+The workflow in `.github/workflows/ci.yml` starts the supplied ShopKart SUT against a disposable MySQL 8.4 service, then runs `./gradlew clean test allureReport`.
+
+Add these repository secrets before enabling CI:
+
+- `SHOPKART_ALICE_PASSWORD`
+- `SHOPKART_BOB_PASSWORD`
+- `SHOPKART_CAROL_PASSWORD`
+- `SHOPKART_DB_PASSWORD`
+- `SHOPKART_DB_ROOT_PASSWORD`
+
+The workflow does not commit or print any of these values.
