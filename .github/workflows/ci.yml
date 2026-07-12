@@ -26,6 +26,14 @@ jobs:
           java-version: '21'
           cache: gradle
 
+      - name: Install Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Generate Gradle wrapper in CI
+        run: gradle wrapper --gradle-version 8.10.2 --no-daemon
+
       - name: Run isolated MySQL Testcontainers check
         run: ./gradlew clean test --tests com.shopkart.data.db.MySqlContainerSmokeTest --no-daemon
 
