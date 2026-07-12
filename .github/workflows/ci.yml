@@ -93,7 +93,18 @@ jobs:
         working-directory: sut
 
       - name: Run Gradle Cucumber suite
-        run: ./gradlew clean test allureReport --no-daemon
+        run: ./gradlew clean test --no-daemon
+
+      - name: Restore Allure history from GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          git fetch origin gh-pages --depth=1 || true
+          mkdir -p build/allure-results/history
+          git archive origin/gh-pages history 2>/dev/null | tar -x -C build/allure-results || true
+
+      - name: Generate Allure static report
+        run: ./gradlew allureReport --no-daemon
 
       - name: Upload Allure results
         if: always()
@@ -102,6 +113,14 @@ jobs:
           name: allure-results
           path: build/allure-results
           if-no-files-found: warn
+
+      - name: Upload Allure static report
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-gh-pages
+          path: build/reports/allure-report/allureReport
+          retention-days: 1
 
       - name: Upload ShopKart log on failure
         if: failure()
@@ -113,3 +132,25 @@ jobs:
       - name: Scan committed files for local secret files
         run: |
           ! git ls-files | grep -E '(^|/)(\.env($|\.)|secrets\.local\.properties$)' | grep -v -E '(^|/)\.env\.example$'
+
+  deploy-allure-report:
+    name: Deploy Allure report to GitHub Pages
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download static Allure report
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-gh-pages
+          path: allure-site
+
+      - name: Publish report to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-site
+          commit_message: 'docs: publish Allure report from ${{ github.sha }}'
