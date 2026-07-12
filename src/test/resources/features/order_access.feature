@@ -1,0 +1,8 @@
+@api @negative @security
+Feature: Orders are visible only to their owner
+  Scenario: Another customer cannot read someone else's order
+    Given "alice" is logged in
+    And "bob" is logged in
+    And "alice" has a PLACED order
+    When "bob" requests GET /api/orders/{that id}
+    Then the response status is 403

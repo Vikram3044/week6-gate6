@@ -1,0 +1,2 @@
+INSERT INTO customers (id, persona, email, display_name) VALUES (1,'alice','alice@shopkart.test','Alice Rao'),(2,'bob','bob@shopkart.test','Bob Mathew'),(3,'carol','carol@shopkart.test','Carol Fernandes');
+INSERT INTO products (sku,name,price_paise,stock) VALUES ('SKU-BAG','Metro Carryall',49900,10),('SKU-PEN','Precision Pen Set',9900,100),('SKU-MUG','Studio Ceramic Mug',24900,3),('SKU-CAP','Everyday Cap',39900,0),('SKU-TEE','Training Tee',59900,25),('SKU-KEY','Utility Key Organiser',14900,50);
