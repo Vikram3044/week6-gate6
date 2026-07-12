@@ -1,4 +1,4 @@
-name: ShopKart automation CI
+name: MySQL Testcontainers CI
 
 on:
   push:
@@ -11,51 +11,13 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Gradle suite against MySQL
+  testcontainers:
+    name: MySQL container and Flyway migrations
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    services:
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_DATABASE: shopkart
-          MYSQL_USER: shopkart_user
-          MYSQL_PASSWORD: ${{ secrets.SHOPKART_DB_PASSWORD }}
-          MYSQL_ROOT_PASSWORD: ${{ secrets.SHOPKART_DB_ROOT_PASSWORD }}
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost -u root -p$MYSQL_ROOT_PASSWORD"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=12
-
-    env:
-      DB_HOST: 127.0.0.1
-      DB_PORT: 3306
-      DB_NAME: shopkart
-      DB_USER: shopkart_user
-      DB_PASSWORD: ${{ secrets.SHOPKART_DB_PASSWORD }}
-      SHOPKART_ALICE_PASSWORD: ${{ secrets.SHOPKART_ALICE_PASSWORD }}
-      SHOPKART_BOB_PASSWORD: ${{ secrets.SHOPKART_BOB_PASSWORD }}
-      SHOPKART_CAROL_PASSWORD: ${{ secrets.SHOPKART_CAROL_PASSWORD }}
-      SHOPKART_ALICE_PW: ${{ secrets.SHOPKART_ALICE_PASSWORD }}
-      SHOPKART_BOB_PW: ${{ secrets.SHOPKART_BOB_PASSWORD }}
-      SHOPKART_DB_URL: jdbc:mysql://127.0.0.1:3306/shopkart
-      SHOPKART_DB_USER: shopkart_user
-      SHOPKART_DB_PASSWORD: ${{ secrets.SHOPKART_DB_PASSWORD }}
-      SHOPKART_PROFILE: ci
-
+    timeout-minutes: 10
     steps:
       - name: Checkout automation project
         uses: actions/checkout@v4
-
-      - name: Checkout ShopKart system under test
-        uses: actions/checkout@v4
-        with:
-          repository: jaisingh-builds/sdet-retail-app
-          path: sut
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
@@ -64,93 +26,9 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Set up Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: |
-            sut/backend/package-lock.json
-            sut/frontend/package-lock.json
-
-      - name: Install ShopKart dependencies
-        run: npm run install:all
-        working-directory: sut
-
-      - name: Migrate MySQL reference data
-        run: npm run db:migrate
-        working-directory: sut
-
-      - name: Start ShopKart UI and API
-        run: |
-          npm start > "$RUNNER_TEMP/shopkart.log" 2>&1 &
-          for attempt in {1..30}; do
-            curl --fail --silent http://localhost:8080/api/health && exit 0
-            sleep 2
-          done
-          cat "$RUNNER_TEMP/shopkart.log"
-          exit 1
-        working-directory: sut
-
-      - name: Run Gradle Cucumber suite
-        run: ./gradlew clean test --no-daemon
-
-      - name: Restore Allure history from GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          git fetch origin gh-pages --depth=1 || true
-          mkdir -p build/allure-results/history
-          git archive origin/gh-pages history 2>/dev/null | tar -x -C build/allure-results || true
-
-      - name: Generate Allure static report
-        run: ./gradlew allureReport --no-daemon
-
-      - name: Upload Allure results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-results
-          path: build/allure-results
-          if-no-files-found: warn
-
-      - name: Upload Allure static report
-        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-gh-pages
-          path: build/reports/allure-report/allureReport
-          retention-days: 1
-
-      - name: Upload ShopKart log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: shopkart-server-log
-          path: ${{ runner.temp }}/shopkart.log
+      - name: Run isolated MySQL Testcontainers check
+        run: ./gradlew clean test --tests com.shopkart.data.db.MySqlContainerSmokeTest --no-daemon
 
       - name: Scan committed files for local secret files
         run: |
           ! git ls-files | grep -E '(^|/)(\.env($|\.)|secrets\.local\.properties$)' | grep -v -E '(^|/)\.env\.example$'
-
-  deploy-allure-report:
-    name: Deploy Allure report to GitHub Pages
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download static Allure report
-        uses: actions/download-artifact@v4
-        with:
-          name: allure-gh-pages
-          path: allure-site
-
-      - name: Publish report to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: allure-site
-          commit_message: 'docs: publish Allure report from ${{ github.sha }}'

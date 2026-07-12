@@ -25,16 +25,6 @@ The resolver supports both `SHOPKART_ALICE_PW` and the app's `SHOPKART_ALICE_PAS
 
 ## GitHub Actions CI
 
-The workflow in `.github/workflows/ci.yml` starts the supplied ShopKart SUT against a disposable MySQL 8.4 service, runs the Gradle suite, and publishes the generated Allure site to the `gh-pages` branch after successful pushes to `main`. It also restores the prior report's `history/` directory so Allure trends persist.
+The workflow in `.github/workflows/ci.yml` runs only `MySqlContainerSmokeTest`: it starts MySQL through Testcontainers, applies the committed Flyway migrations, and verifies the public product seed. It does not start the ShopKart application, use a GitHub Actions MySQL service, require secrets, or deploy a report.
 
-Add these repository secrets before enabling CI:
-
-- `SHOPKART_ALICE_PASSWORD`
-- `SHOPKART_BOB_PASSWORD`
-- `SHOPKART_CAROL_PASSWORD`
-- `SHOPKART_DB_PASSWORD`
-- `SHOPKART_DB_ROOT_PASSWORD`
-
-The workflow does not commit or print any of these values.
-
-In the GitHub repository settings, enable **Pages** and select **Deploy from a branch** → `gh-pages` → `/(root)`. The report will then be available at `https://Vikram3044.github.io/week6-gate6/` after the first successful CI run.
+Run the complete API/UI suite locally against a running ShopKart application with `gradle test`.
